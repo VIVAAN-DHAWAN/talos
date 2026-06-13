@@ -1,5 +1,6 @@
 stages:
   - build
+  - test
   - dark-matter
 
 variables:
@@ -17,6 +18,26 @@ build:
     paths:
       - dist/
     expire_in: 1 day
+
+# Pre-Flight smoke tests. Boot the built app headless and verify it responds.
+# A failure here blocks the MR (cue to trigger the Fix Pipeline agent).
+smoke-tests:
+  stage: test
+  image: mcr.microsoft.com/playwright:v1.45.0-jammy
+  needs: ["build"]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH'
+  script:
+    - npm ci || npm install
+    - npm run build
+    - npx playwright install --with-deps chromium
+    - npm run test:e2e
+  artifacts:
+    when: always
+    paths:
+      - playwright-report/
+    expire_in: 7 days
 
 # Runs only on scheduled pipelines with DARK_MATTER=1.
 # Create a schedule under Build > Pipeline schedules with that variable set.
