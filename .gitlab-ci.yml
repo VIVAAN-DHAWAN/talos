@@ -2,6 +2,7 @@ stages:
   - build
   - test
   - dark-matter
+  - panic
 
 variables:
   NODE_VERSION: "20"
@@ -56,4 +57,21 @@ dark-matter:
     when: always
     paths:
       - .dark-matter/
+    expire_in: 7 days
+
+# Panic-Button: opens an automated revert MR when triggered by an external
+# alert (e.g. Sentry) via the pipeline trigger API with PANIC=1.
+panic-button:
+  stage: panic
+  image: node:${NODE_VERSION}
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "trigger" && $PANIC == "1"'
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends jq git curl
+  script:
+    - bash .gitlab/panic-button/revert.sh
+  artifacts:
+    when: always
+    paths:
+      - panic_mr_response.json
     expire_in: 7 days
