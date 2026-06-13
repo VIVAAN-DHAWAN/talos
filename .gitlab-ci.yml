@@ -1,0 +1,38 @@
+stages:
+  - build
+  - dark-matter
+
+variables:
+  NODE_VERSION: "20"
+
+default:
+  image: node:${NODE_VERSION}
+
+build:
+  stage: build
+  script:
+    - npm ci || npm install
+    - npm run build
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 day
+
+# Runs only on scheduled pipelines with DARK_MATTER=1.
+# Create a schedule under Build > Pipeline schedules with that variable set.
+dark-matter:
+  stage: dark-matter
+  image: node:${NODE_VERSION}
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $DARK_MATTER == "1"'
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends jq git curl
+    - npm ci || npm install
+  script:
+    - bash .gitlab/dark-matter/run.sh
+    - bash .gitlab/dark-matter/open-mr.sh
+  artifacts:
+    when: always
+    paths:
+      - .dark-matter/
+    expire_in: 7 days
