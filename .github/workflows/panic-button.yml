@@ -1,0 +1,19 @@
+name: Panic Button
+
+on:
+  repository_dispatch:
+    types: [panic_button]
+
+jobs:
+  panic-button:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Revert and Open PR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PANIC_REVERT_SHA: ${{ github.event.client_payload.sha }}
+          PANIC_REASON: ${{ github.event.client_payload.reason }}
+        run: bash .github/scripts/panic-button/revert.sh

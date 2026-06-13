@@ -1,0 +1,22 @@
+name: Dark Matter Scanner
+
+on:
+  schedule:
+    - cron: '0 3 * * 1' # Runs at 03:00 on Monday
+  workflow_dispatch:
+
+jobs:
+  dark-matter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci || npm install
+      - run: bash .github/scripts/dark-matter/run.sh
+      - name: Open PR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash .github/scripts/dark-matter/open-pr.sh
