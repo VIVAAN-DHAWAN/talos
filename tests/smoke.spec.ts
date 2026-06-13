@@ -28,3 +28,29 @@ test('GET / returns a greeting message', async () => {
   expect(typeof body.message).toBe('string');
   await ctx.dispose();
 });
+
+test('GET /api/status returns codebase stats and unused items', async () => {
+  const ctx = await request.newContext();
+  const res = await ctx.get(`${BASE_URL}/api/status`);
+  expect(res.status()).toBe(200);
+  const body = await res.json();
+  expect(body.ok).toBe(true);
+  expect(body).toHaveProperty('stats');
+  expect(body.stats).toHaveProperty('totalFiles');
+  expect(body.stats).toHaveProperty('totalDeps');
+  expect(Array.isArray(body.unusedFiles)).toBe(true);
+  expect(Array.isArray(body.unusedDeps)).toBe(true);
+  expect(Array.isArray(body.unusedExports)).toBe(true);
+  await ctx.dispose();
+});
+
+test('GET /api/history returns log history list', async () => {
+  const ctx = await request.newContext();
+  const res = await ctx.get(`${BASE_URL}/api/history`);
+  expect(res.status()).toBe(200);
+  const body = await res.json();
+  expect(body.ok).toBe(true);
+  expect(Array.isArray(body.history)).toBe(true);
+  await ctx.dispose();
+});
+

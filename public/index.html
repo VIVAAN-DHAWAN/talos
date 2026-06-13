@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Talos • Dark Matter Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="glow-bg"></div>
+  
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">⚡</div>
+        <div class="brand-text">
+          <h1>TALOS</h1>
+          <span>Dark Matter Engine</span>
+        </div>
+      </div>
+      
+      <nav class="nav-menu">
+        <button class="nav-item active" data-tab="dashboard" id="btn-tab-dashboard">
+          <span class="nav-icon">📊</span>
+          Dashboard
+        </button>
+        <button class="nav-item" data-tab="scanner" id="btn-tab-scanner">
+          <span class="nav-icon">🔍</span>
+          Scanner
+        </button>
+        <button class="nav-item" data-tab="panic" id="btn-tab-panic">
+          <span class="nav-icon">🚨</span>
+          Panic Button
+        </button>
+        <button class="nav-item" data-tab="history" id="btn-tab-history">
+          <span class="nav-icon">📜</span>
+          Scan Logs
+        </button>
+      </nav>
+      
+      <div class="system-status">
+        <div class="status-indicator online"></div>
+        <div class="status-details">
+          <p>Engine Active</p>
+          <span>v0.1.0 • Connected</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <header class="main-header">
+        <div class="header-title">
+          <h2 id="page-title">Repository Dashboard</h2>
+          <p id="page-subtitle">Overview of codebase usage, dead dependencies, and active code health.</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-secondary" id="btn-quick-scan">
+            <span>⚡</span> Quick Audit
+          </button>
+        </div>
+      </header>
+
+      <!-- TAB: Dashboard -->
+      <section class="tab-content active" id="tab-dashboard">
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-header">
+              <span class="stat-label">Total Files</span>
+              <span class="stat-icon">📁</span>
+            </div>
+            <div class="stat-value" id="stat-total-files">—</div>
+            <div class="stat-footer">
+              <span class="stat-trend neutral">All files indexed</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-header">
+              <span class="stat-label">Total Dependencies</span>
+              <span class="stat-icon">📦</span>
+            </div>
+            <div class="stat-value" id="stat-total-deps">—</div>
+            <div class="stat-footer">
+              <span class="stat-trend neutral" id="stat-dev-deps-count">— devDependencies</span>
+            </div>
+          </div>
+          <div class="stat-card warning">
+            <div class="stat-header">
+              <span class="stat-label">Unused Files</span>
+              <span class="stat-icon">🗑️</span>
+            </div>
+            <div class="stat-value" id="stat-unused-files">—</div>
+            <div class="stat-footer">
+              <span class="stat-trend negative" id="stat-unused-files-label">Flagged by Knip</span>
+            </div>
+          </div>
+          <div class="stat-card danger">
+            <div class="stat-header">
+              <span class="stat-label">Dead Dependencies</span>
+              <span class="stat-icon">🔌</span>
+            </div>
+            <div class="stat-value" id="stat-unused-deps">—</div>
+            <div class="stat-footer">
+              <span class="stat-trend negative" id="stat-unused-deps-label">Unused packages</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dashboard Charts & Info -->
+        <div class="dashboard-panels">
+          <div class="panel glass-panel code-health-panel">
+            <h3>Codebase Health Index</h3>
+            <div class="health-circle-container">
+              <div class="health-ring">
+                <svg viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="40" class="ring-bg"></circle>
+                  <circle cx="50" cy="50" r="40" class="ring-val" id="health-ring-val" stroke-dasharray="251.2" stroke-dashoffset="251.2"></circle>
+                </svg>
+                <div class="health-val" id="health-score">—%</div>
+              </div>
+            </div>
+            <div class="health-metrics">
+              <div class="metric">
+                <span>Active Code</span>
+                <span class="metric-val" id="metric-active-code">—</span>
+              </div>
+              <div class="metric">
+                <span>Dark Matter (Dead Code)</span>
+                <span class="metric-val text-danger" id="metric-dark-matter">—</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel glass-panel repository-info-panel">
+            <h3>Talos Config details</h3>
+            <div class="details-list">
+              <div class="detail-item">
+                <span class="detail-label">Project Name</span>
+                <span class="detail-val" id="info-project-name">—</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Repository Host</span>
+                <span class="detail-val">GitHub (VIVAAN-DHAWAN)</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">TypeScript Version</span>
+                <span class="detail-val" id="info-ts-ver">—</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Express Engine</span>
+                <span class="detail-val">Active (v4.19.2)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB: Scanner -->
+      <section class="tab-content" id="tab-scanner">
+        <div class="scanner-controls panel glass-panel">
+          <div class="controls-info">
+            <h3>Dark Matter Code & Dependency Audit</h3>
+            <p>Scan your workspace in real-time to identify dead code, unused exports, and unreferenced packages. You can choose to run a dry-run audit or trigger automated safe removals.</p>
+          </div>
+          <div class="controls-buttons">
+            <button class="btn btn-primary" id="btn-run-audit">🔍 Analyze Codebase</button>
+            <button class="btn btn-danger" id="btn-run-cleanup">🧹 Safe Clean & PR</button>
+          </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div class="loading-panel hidden" id="scanner-loading">
+          <div class="spinner"></div>
+          <h4 id="loading-title">Scanning codebase...</h4>
+          <p id="loading-desc">Running Knip and Depcheck analysis in the background.</p>
+        </div>
+
+        <!-- Scan Results -->
+        <div class="scan-results-container hidden" id="scan-results">
+          <!-- Unused Files -->
+          <div class="panel glass-panel result-panel">
+            <div class="result-header">
+              <h4>Unused Files <span class="badge badge-warning" id="count-unused-files">0</span></h4>
+              <p>Files that are never imported anywhere. Safe to delete.</p>
+            </div>
+            <div class="result-list" id="list-unused-files">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Unused Dependencies -->
+          <div class="panel glass-panel result-panel">
+            <div class="result-header">
+              <h4>Dead Dependencies <span class="badge badge-danger" id="count-unused-deps">0</span></h4>
+              <p>Packages declared in package.json but never imported in source files.</p>
+            </div>
+            <div class="result-list" id="list-unused-deps">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Unused Exports -->
+          <div class="panel glass-panel result-panel">
+            <div class="result-header">
+              <h4>Unused Exports <span class="badge badge-info" id="count-unused-exports">0</span></h4>
+              <p>Functions, classes, or constants exported from modules but never imported elsewhere.</p>
+            </div>
+            <div class="result-list" id="list-unused-exports">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB: Panic Button -->
+      <section class="tab-content" id="tab-panic">
+        <div class="panic-container">
+          <div class="panel glass-panel panic-details">
+            <h3>🚨 Immediate Production Recovery</h3>
+            <p>The Panic Button reverts a specific commit (or the latest HEAD commit) and pushes a recovery branch directly to your repository, opening a pull request to restore production health.</p>
+            
+            <div class="form-group">
+              <label for="panic-sha">Commit SHA to Revert</label>
+              <input type="text" id="panic-sha" placeholder="Defaults to HEAD (leave blank)" class="form-control">
+              <small class="form-text">Specify the bad commit SHA causing the incident. If blank, the latest commit on main will be reverted.</small>
+            </div>
+
+            <div class="form-group">
+              <label for="panic-reason">Reason for Revert</label>
+              <textarea id="panic-reason" placeholder="e.g. Sentry error spike / Production crash / Unhandled exception in login flow" class="form-control" rows="3"></textarea>
+            </div>
+
+            <div class="panic-trigger-zone">
+              <div class="panic-guard-check">
+                <input type="checkbox" id="panic-confirm">
+                <label for="panic-confirm">I confirm that I want to trigger an automated panic revert on GitHub.</label>
+              </div>
+              <button class="btn-panic" id="btn-trigger-panic" disabled>
+                <div class="btn-panic-glow"></div>
+                <div class="btn-panic-content">
+                  <span class="panic-icon">🚨</span>
+                  <span>TRIGGER PANIC REVERT</span>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB: Scan Logs -->
+      <section class="tab-content" id="tab-history">
+        <div class="panel glass-panel">
+          <h3>Audit Log History</h3>
+          <p>A history of all automated audits, cleanups, and panic button reverts executed by the Talos Engine.</p>
+          
+          <div class="table-container">
+            <table class="logs-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Action</th>
+                  <th>Status</th>
+                  <th>Details</th>
+                  <th>Branch/PR</th>
+                </tr>
+              </thead>
+              <tbody id="history-log-rows">
+                <tr>
+                  <td colspan="5" class="empty-table">No logs recorded yet. Run a scan or cleanup to populate.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Panic Loading/Success Modal -->
+  <div class="modal-backdrop hidden" id="panic-modal">
+    <div class="modal glass-panel">
+      <div id="modal-loading-state">
+        <div class="spinner spinner-large"></div>
+        <h3>Executing Panic Revert...</h3>
+        <p>Creating recovery branch, reverting commit, and opening pull request.</p>
+      </div>
+      <div id="modal-success-state" class="hidden">
+        <div class="success-icon">✓</div>
+        <h3>Revert PR Opened Successfully!</h3>
+        <p id="success-message">A recovery pull request has been opened on your repository.</p>
+        <div class="modal-pr-details" id="modal-pr-link-container">
+          <!-- Link to PR -->
+        </div>
+        <button class="btn btn-primary" id="btn-close-modal" style="margin-top: 20px;">Dismiss</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -3,3 +3,5 @@ dist/
 *.log
 .env
 .dark-matter/
+playwright-report/
+test-results/
