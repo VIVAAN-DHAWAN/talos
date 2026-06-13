@@ -7,11 +7,27 @@ stages:
 variables:
   NODE_VERSION: "20"
 
+# Prevent duplicate pipelines: when an MR is open, run the merge_request
+# pipeline and skip the redundant branch pipeline. Also allow default-branch
+# pushes, schedules, and external triggers.
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "trigger"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
+      when: never
+    - if: '$CI_COMMIT_BRANCH'
+
 default:
   image: node:${NODE_VERSION}
 
 build:
   stage: build
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
   script:
     - npm ci || npm install
     - npm run build
@@ -28,7 +44,7 @@ smoke-tests:
   needs: ["build"]
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - if: '$CI_COMMIT_BRANCH'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
   script:
     - npm ci || npm install
     - npm run build
