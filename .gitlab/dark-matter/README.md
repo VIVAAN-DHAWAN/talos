@@ -44,3 +44,8 @@ fi
 ```
 
 Keep removals conservative — the human reviewer is the final gate.
+
+## Status
+
+Infrastructure is in place. The first scheduled run will only happen after the
+one-time setup (token + schedule) above is completed.
