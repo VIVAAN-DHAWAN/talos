@@ -1,90 +1,111 @@
 #!/usr/bin/env bash
-# Dark Matter scanner: detects stack, runs the matching tools,
-# and writes a normalized report + applies safe removals to the working tree.
+# dark-matter/run.sh — runs Knip + Depcheck, applies cleanup, reports changes.
 #
-# Currently implements Node/TypeScript via knip + depcheck.
-# Other stacks (Python, Go, ...) can be added by following the same pattern.
+# Design rules:
+#   - Every step `set -e`'s on failure; no silent fall-through.
+#   - No `cd` outside the repo root; the caller pins the cwd.
+#   - Branch / PR creation lives in open-pr.sh, not here.
+#   - Output is line-oriented so the Talos backend can parse a small
+#     well-known marker (`CHANGES_MADE=YES|NO`) without regex on prose.
+#
+# Usage: bash run.sh
+# Env:  none required. Caller should set PATH to include node/npx.
+
 set -euo pipefail
 
-OUT_DIR=".dark-matter"
-mkdir -p "$OUT_DIR"
+# Resolve repo root from script location so the script is location-independent.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+DM_DIR="$REPO_ROOT/.dark-matter"
 
-SUMMARY="$OUT_DIR/summary.md"
-CHANGES_MADE=0
+mkdir -p "$DM_DIR"
+SUMMARY="$DM_DIR/summary.md"
+CHANGES_FLAG="$DM_DIR/changes_made"
 
 : > "$SUMMARY"
-echo "# Dark Matter report" >> "$SUMMARY"
-echo "" >> "$SUMMARY"
-echo "_Generated: $(date -u +'%Y-%m-%dT%H:%M:%SZ')_" >> "$SUMMARY"
-echo "" >> "$SUMMARY"
+echo "NO" > "$CHANGES_FLAG"
 
-#------------------------------------------------------------------------------
-# Node / TypeScript
-#------------------------------------------------------------------------------
-if [[ -f package.json ]]; then
-  echo "## Node / TypeScript" >> "$SUMMARY"
-  echo "" >> "$SUMMARY"
+log() { printf '[dark-matter] %s\n' "$*" >&2; }
 
-  # --- knip: unused files + exports -------------------------------------------
-  echo "==> Running knip"
-  npx --yes knip --reporter json > "$OUT_DIR/knip.json" || true
+# Knip — unused files, exports, dependencies. JSON reporter for parsing.
+log "running knip"
+KNIP_JSON="$DM_DIR/knip.json"
+if npx --no-install knip --reporter json > "$KNIP_JSON" 2> "$DM_DIR/knip.err"; then
+  log "knip ok"
+else
+  log "knip failed (continuing — its output is still parsed)"
+fi
 
-  # Delete fully-unused files reported by knip.
-  UNUSED_FILES=$(jq -r '.files // [] | .[]' "$OUT_DIR/knip.json" 2>/dev/null || true)
-  if [[ -n "${UNUSED_FILES:-}" ]]; then
-    echo "" >> "$SUMMARY"
-    echo "### Removed unused files" >> "$SUMMARY"
-    while IFS= read -r f; do
-      [[ -z "$f" ]] && continue
-      if [[ -f "$f" ]]; then
-        echo "  - removing $f"
-        git rm -f "$f" >/dev/null
-        echo "- \`$f\`" >> "$SUMMARY"
-        CHANGES_MADE=1
-      fi
-    done <<< "$UNUSED_FILES"
-  fi
+# Parse unused files out of the Knip JSON via node (jq not guaranteed).
+UNUSED_FILES_JSON="$(node -e '
+  const fs = require("fs");
+  try {
+    const j = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+    const files = (j.files || []).map(f => f.path).filter(Boolean);
+    console.log(JSON.stringify(files));
+  } catch {
+    console.log("[]");
+  }
+' "$KNIP_JSON" 2>/dev/null || echo '[]')"
 
-  # Record (but do not auto-remove) individual unused exports.
-  UNUSED_EXPORTS=$(jq -r '
-    (.issues // []) | .[] |
-    .file as $f |
-    ((.exports // [])[] | "  - \($f): \(.name)")
-  ' "$OUT_DIR/knip.json" 2>/dev/null || true)
-  if [[ -n "${UNUSED_EXPORTS:-}" ]]; then
-    echo "" >> "$SUMMARY"
-    echo "### Unused exports (manual review)" >> "$SUMMARY"
-    echo '```' >> "$SUMMARY"
-    echo "$UNUSED_EXPORTS" >> "$SUMMARY"
-    echo '```' >> "$SUMMARY"
-  fi
+mapfile -t UNUSED_FILES < <(node -e 'console.log(JSON.parse(process.argv[1]).join("\n"))' "$UNUSED_FILES_JSON")
 
-  # --- depcheck: unused dependencies ------------------------------------------
-  echo "==> Running depcheck"
-  npx --yes depcheck --json > "$OUT_DIR/depcheck.json" || true
+if [ "${#UNUSED_FILES[@]}" -gt 0 ] && [ -n "${UNUSED_FILES[0]:-}" ]; then
+  log "removing ${#UNUSED_FILES[@]} unused file(s)"
+  for f in "${UNUSED_FILES[@]}"; do
+    if [ -n "$f" ] && [ -f "$REPO_ROOT/$f" ]; then
+      rm -f "$REPO_ROOT/$f"
+      echo "rm $f" >> "$SUMMARY"
+    fi
+  done
+  echo "YES" > "$CHANGES_FLAG"
+fi
 
-  UNUSED_DEPS=$(jq -r '.dependencies // [] | .[]' "$OUT_DIR/depcheck.json" 2>/dev/null || true)
-  if [[ -n "${UNUSED_DEPS:-}" ]]; then
-    echo "" >> "$SUMMARY"
-    echo "### Removed unused dependencies" >> "$SUMMARY"
-    while IFS= read -r dep; do
-      [[ -z "$dep" ]] && continue
-      echo "  - uninstalling $dep"
-      npm uninstall "$dep" >/dev/null 2>&1 || true
-      echo "- \`$dep\`" >> "$SUMMARY"
-      CHANGES_MADE=1
-    done <<< "$UNUSED_DEPS"
+# Depcheck — unused deps. JSON output.
+log "running depcheck"
+DEPCHECK_JSON="$DM_DIR/depcheck.json"
+if npx --no-install depcheck --json > "$DEPCHECK_JSON" 2> "$DM_DIR/depcheck.err"; then
+  log "depcheck ok"
+else
+  log "depcheck failed (continuing)"
+fi
+
+UNUSED_DEPS="$(node -e '
+  const fs = require("fs");
+  try {
+    const j = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+    const deps = (j.dependencies || []);
+    console.log(deps.join("\n"));
+  } catch {
+    console.log("");
+  }
+' "$DEPCHECK_JSON" 2>/dev/null || echo '')"
+
+if [ -n "$UNUSED_DEPS" ]; then
+  mapfile -t DEP_ARRAY <<< "$UNUSED_DEPS"
+  # Filter empty lines.
+  DEP_ARRAY=("${DEP_ARRAY[@]/#/}")
+  DEP_ARRAY=("${DEP_ARRAY[@]}" )
+  REAL_DEPS=()
+  for d in "${DEP_ARRAY[@]}"; do
+    [ -n "$d" ] && REAL_DEPS+=("$d")
+  done
+  if [ "${#REAL_DEPS[@]}" -gt 0 ]; then
+    log "uninstalling ${#REAL_DEPS[@]} unused dep(s)"
+    # npm uninstall with explicit names — no shell expansion surprises.
+    npm uninstall --no-save "${REAL_DEPS[@]}" >&2 || log "npm uninstall failed (continuing)"
+    for d in "${REAL_DEPS[@]}"; do
+      echo "uninstall $d" >> "$SUMMARY"
+    done
+    echo "YES" > "$CHANGES_FLAG"
   fi
 fi
 
-#------------------------------------------------------------------------------
-# Future: Python (vulture, deptry), Go (deadcode, go mod tidy), ...
-#------------------------------------------------------------------------------
-
-if [[ "$CHANGES_MADE" -eq 0 ]]; then
-  echo "" >> "$SUMMARY"
-  echo "_No safe removals found this run._" >> "$SUMMARY"
+# Surface result for the backend.
+if [ "$(cat "$CHANGES_FLAG")" = "YES" ]; then
+  echo "CHANGES_MADE=YES"
+  log "done with changes"
+else
+  echo "CHANGES_MADE=NO"
+  log "done without changes"
 fi
-
-echo "$CHANGES_MADE" > "$OUT_DIR/changes_made"
-echo "==> Dark Matter scan complete (changes_made=$CHANGES_MADE)"

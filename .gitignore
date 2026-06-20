@@ -1,7 +1,12 @@
 node_modules/
 dist/
-*.log
-.env
 .dark-matter/
+coverage/
+.env
+.env.local
+*.log
+.DS_Store
 playwright-report/
 test-results/
+skills/
+upload/

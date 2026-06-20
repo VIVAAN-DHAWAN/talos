@@ -1,21 +1,47 @@
-name: Smoke Tests
+name: smoke-tests
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [main]
   pull_request:
-    branches: [ "main" ]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: smoke-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  smoke-tests:
+  smoke:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Use Node.js 20
-        uses: actions/setup-node@v4
+
+      - uses: actions/setup-node@v4
         with:
-          node-version: 20
-      - run: npm ci || npm install
-      - run: npm run build
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+      - name: Type-check
+        run: npm run build --if-present
+
+      - name: Run unit tests
+        run: npm test --if-present
+        env:
+          TALOS_DISABLE_SPAWN: '1'
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright smoke tests
+        run: npm run test:e2e
+        env:
+          TALOS_DISABLE_SPAWN: '1'
+          CI: 'true'

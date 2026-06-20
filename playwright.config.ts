@@ -1,26 +1,31 @@
 import { defineConfig } from '@playwright/test';
+import * as os from 'node:os';
+import * as path from 'node:path';
 
-/**
- * Playwright config for OmniLoop smoke tests.
- *
- * The webServer block boots the built app (dist/server.js) in headless mode
- * before the tests run, and tears it down afterwards. In CI we never reuse an
- * existing server so each pipeline gets a clean boot.
- */
+const PORT = Number(process.env.PORT ?? 3000);
+// Per-run tmp history file so e2e tests start from a clean state
+// regardless of any .dark-matter/history.json left over from manual
+// curl testing.
+const HISTORY_PATH = path.join(os.tmpdir(), `talos-e2e-history-${process.pid}.json`);
+
 export default defineConfig({
-  testDir: './tests',
+  testDir: './tests/e2e',
   timeout: 30_000,
-  expect: { timeout: 5_000 },
-  retries: process.env.CI ? 1 : 0,
-  reporter: [['list'], ['html', { open: 'never' }]],
+  retries: 0,
   use: {
-    baseURL: process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3000',
-    trace: 'on-first-retry',
+    baseURL: `http://127.0.0.1:${PORT}`,
+    trace: 'on-first-retry'
   },
   webServer: {
     command: 'node dist/server.js',
-    url: 'http://127.0.0.1:3000/health',
+    port: PORT,
     timeout: 30_000,
     reuseExistingServer: !process.env.CI,
-  },
+    env: {
+      NODE_ENV: 'test',
+      PORT: String(PORT),
+      TALOS_DISABLE_SPAWN: '1',
+      TALOS_HISTORY_PATH: HISTORY_PATH
+    }
+  }
 });

@@ -1,79 +1,85 @@
 #!/usr/bin/env bash
-# Panic-Button revert generator.
+# panic-button/revert.sh — reverts a commit and opens a recovery PR.
 #
-# Produces a revert commit on a fresh branch and opens a recovery PR via the
-# GitHub CLI.
+# Design rules:
+#   - SHA is validated via `git cat-file -e` before any destructive op.
+#   - HEAD is the default when no SHA is supplied.
+#   - Merge commits are rejected — they need `-m <parent>` and that's a
+#     human decision.
+#   - Branch name is deterministic: panic/revert-<short-sha>.
+#   - The revert itself uses `git revert --no-edit` so the commit
+#     message is the canonical "Revert <sha> ..." form.
+#   - The recovery PR is opened with `gh pr create` after push succeeds.
+#   - `git revert --abort` is called if anything fails between revert
+#     and push, so the working tree is left clean.
 #
-# Inputs (from env):
-#   PANIC_REVERT_SHA   - commit SHA to revert. Defaults to HEAD.
-#   PANIC_REASON       - short human description of the incident.
-#   GITHUB_TOKEN       - GitHub token.
+# Usage: bash revert.sh [SHA]
+# Env:  GH_TOKEN (required)
+
 set -euo pipefail
 
-if [[ -z "${GITHUB_TOKEN:-}" ]]; then
-  echo "ERROR: No token. Set GITHUB_TOKEN." >&2
-  exit 1
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+if [ -z "${GH_TOKEN:-}" ]; then
+  echo "ERROR: GH_TOKEN is required." >&2
+  exit 65
 fi
+export GH_TOKEN
 
-TARGET_BRANCH="main"
-REASON="${PANIC_REASON:-Production incident detected by external alert.}"
-DATE_TAG="$(date -u +'%Y%m%d-%H%M%S')"
-
-git config user.email "panic-bot@aegis.local"
-git config user.name  "Panic Button Bot"
-
-# Resolve the commit to revert.
-REVERT_SHA="${PANIC_REVERT_SHA:-}"
-if [[ -z "$REVERT_SHA" ]]; then
-  REVERT_SHA="$(git rev-parse HEAD)"
-  echo "PANIC_REVERT_SHA not set; defaulting to HEAD: $REVERT_SHA"
-fi
-
-if ! git cat-file -e "${REVERT_SHA}^{commit}" 2>/dev/null; then
-  echo "ERROR: commit $REVERT_SHA not found in history." >&2
-  exit 1
-fi
-
-SHORT_SHA="$(git rev-parse --short "$REVERT_SHA")"
-ORIGINAL_SUBJECT="$(git log -1 --format='%s' "$REVERT_SHA")"
-BRANCH="panic/revert-${SHORT_SHA}-${DATE_TAG}"
-
-git checkout -b "$BRANCH"
-
-# --no-edit keeps the default revert message; -m 1 handles merge commits safely.
-if git rev-list --merges --max-count=1 "${REVERT_SHA}^..${REVERT_SHA}" | grep -q .; then
-  REVERT_ARGS=(--no-edit -m 1)
+SHA_ARG="${1:-}"
+if [ -z "$SHA_ARG" ]; then
+  SHA="$(git -C "$REPO_ROOT" rev-parse HEAD)"
 else
-  REVERT_ARGS=(--no-edit)
+  # Validate format: 7..40 hex chars.
+  if ! printf '%s' "$SHA_ARG" | grep -Eq '^[0-9a-f]{7,40}$'; then
+    echo "ERROR: SHA must be 7..40 hex characters. Got: $SHA_ARG" >&2
+    exit 64
+  fi
+  # Resolve to a full SHA and confirm it points at a commit.
+  if ! SHA="$(git -C "$REPO_ROOT" rev-parse "$SHA_ARG" 2>/dev/null)"; then
+    echo "ERROR: could not resolve SHA: $SHA_ARG" >&2
+    exit 64
+  fi
+  if ! git -C "$REPO_ROOT" cat-file -e "${SHA}^{commit}" 2>/dev/null; then
+    echo "ERROR: SHA does not point at a commit: $SHA" >&2
+    exit 64
+  fi
 fi
 
-if ! git revert "${REVERT_ARGS[@]}" "$REVERT_SHA"; then
-  echo "ERROR: git revert produced conflicts; aborting for manual handling." >&2
-  git revert --abort || true
-  exit 1
+# Reject merge commits.
+PARENTS="$(git -C "$REPO_ROOT" rev-list --parents -n 1 "$SHA" | awk '{ print NF }')"
+if [ "$PARENTS" -gt 2 ]; then
+  echo "ERROR: $SHA is a merge commit. Reverting a merge requires specifying -m <parent>." >&2
+  exit 66
 fi
 
-git push -u origin "$BRANCH"
+SHORT="${SHA:0:12}"
+BRANCH="panic/revert-${SHORT}"
 
-DESCRIPTION="## 🚨 Panic-Button automated revert
+git -C "$REPO_ROOT" checkout -b "$BRANCH" --no-gpg-sign 2>/dev/null || \
+  git -C "$REPO_ROOT" switch -c "$BRANCH"
 
-An external alert triggered an automated revert.
+if ! git -C "$REPO_ROOT" revert --no-edit "$SHA"; then
+  git -C "$REPO_ROOT" revert --abort 2>/dev/null || true
+  echo "ERROR: git revert failed for $SHA" >&2
+  exit 70
+fi
 
-**Reverted commit:** \`${SHORT_SHA}\` - ${ORIGINAL_SUBJECT}
-**Reason:** ${REASON}
+git -C "$REPO_ROOT" push -u origin "$BRANCH"
 
-### What to do
-1. Confirm this revert resolves the incident.
-2. Merge to restore the last-known-good state.
-3. Open a follow-up to fix the root cause forward.
+PR_URL="$(gh pr create \
+  --head "$BRANCH" \
+  --title "panic: revert ${SHORT}" \
+  --body "Operator-initiated panic revert of \`$SHA\`.
 
----
-_Opened automatically by the Panic-Button pipeline._"
+## Why
+Reverts commit \`$SHA\`.
 
-gh pr create \
-  --title "🚨 Panic revert of ${SHORT_SHA}: ${ORIGINAL_SUBJECT}" \
-  --body "$DESCRIPTION" \
-  --base main \
-  --head "$BRANCH"
+## Validation
+Reviewer should confirm CI is green before merge and confirm the revert
+does not silently re-open a fixed vulnerability.")"
 
-echo "Panic revert PR opened on branch $BRANCH"
+echo "PR_URL=$PR_URL"
+echo "BRANCH=$BRANCH"
+echo "SHA=$SHA"

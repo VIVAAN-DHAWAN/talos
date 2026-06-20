@@ -1,19 +1,49 @@
-name: Panic Button
+name: panic-button
 
 on:
   repository_dispatch:
-    types: [panic_button]
+    types: [panic-revert]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: 'Commit SHA to revert (defaults to HEAD)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: panic-button
+  cancel-in-progress: false
 
 jobs:
-  panic-button:
+  revert:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Revert and Open PR
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Resolve SHA
+        id: sha
+        run: |
+          if [ -n "${{ github.event.client_payload.sha }}" ]; then
+            echo "value=${{ github.event.client_payload.sha }}" >> "$GITHUB_OUTPUT"
+          elif [ -n "${{ inputs.sha }}" ]; then
+            echo "value=${{ inputs.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run panic revert
+        run: bash .github/scripts/panic-button/revert.sh "${{ steps.sha.outputs.value }}"
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PANIC_REVERT_SHA: ${{ github.event.client_payload.sha }}
-          PANIC_REASON: ${{ github.event.client_payload.reason }}
-        run: bash .github/scripts/panic-button/revert.sh
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

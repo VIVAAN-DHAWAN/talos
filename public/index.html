@@ -1,316 +1,277 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Talos — Dark Matter Engine</title>
-  <meta name="description" content="Talos Dark Matter Engine — automated dead code detection, unused dependency cleanup, and one-click production panic recovery dashboard">
-  <meta property="og:title" content="Talos — Dark Matter Engine">
-  <meta property="og:description" content="Automated dead code detection, unused dependency cleanup, and one-click production panic recovery dashboard">
-  <meta property="og:type" content="website">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <div class="glow-bg"></div>
-  
-  <div class="app-container">
-    <!-- Sidebar -->
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-icon">⚡</div>
-        <div class="brand-text">
-          <h1>TALOS</h1>
-          <span>Dark Matter Engine</span>
-        </div>
-      </div>
-      
-      <nav class="nav-menu">
-        <button class="nav-item active" data-tab="dashboard" id="btn-tab-dashboard">
-          <span class="nav-icon">📊</span>
-          Dashboard
-        </button>
-        <button class="nav-item" data-tab="scanner" id="btn-tab-scanner">
-          <span class="nav-icon">🔍</span>
-          Scanner
-        </button>
-        <button class="nav-item" data-tab="panic" id="btn-tab-panic">
-          <span class="nav-icon">🚨</span>
-          Panic Button
-        </button>
-        <button class="nav-item" data-tab="history" id="btn-tab-history">
-          <span class="nav-icon">📜</span>
-          Scan Logs
-        </button>
-      </nav>
-      
-      <div class="system-status">
-        <div class="status-indicator online"></div>
-        <div class="status-details">
-          <p>Engine Active</p>
-          <span>v0.1.0 • Connected</span>
-        </div>
-      </div>
-    </aside>
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="description" content="Talos — repository health, dark-matter scanning, safe cleanup, and panic recovery." />
+    <title>Talos</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to main content</a>
 
-    <!-- Main Content Area -->
-    <main class="main-content">
-      <header class="main-header">
-        <div class="header-title">
-          <h2 id="page-title">Repository Dashboard</h2>
-          <p id="page-subtitle">Overview of codebase usage, dead dependencies, and active code health.</p>
+    <div class="app">
+      <!-- Sidebar: primary navigation -->
+      <aside class="sidebar" aria-label="Talos navigation">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="3" y="3" width="14" height="14" rx="2" />
+              <path d="M3 9h14M9 3v14" />
+            </svg>
+          </span>
+          <span class="brand-name">Talos</span>
+          <span class="brand-version" id="brand-version">v—</span>
         </div>
-        <div class="header-actions">
-          <button class="btn btn-secondary" id="btn-quick-scan">
-            <span>⚡</span> Quick Audit
+
+        <nav class="nav" role="tablist" aria-label="Sections">
+          <button id="btn-tab-dashboard" class="nav-item" role="tab" aria-selected="true" aria-controls="panel-dashboard" tabindex="0" data-tab="dashboard">
+            <span class="nav-icon" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>
+            </span>
+            <span class="nav-label">Dashboard</span>
           </button>
-        </div>
-      </header>
+          <button id="btn-tab-scanner" class="nav-item" role="tab" aria-selected="false" aria-controls="panel-scanner" tabindex="-1" data-tab="scanner">
+            <span class="nav-icon" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="5"/><path d="M8 3v2M8 11v2M3 8h2M11 8h2"/></svg>
+            </span>
+            <span class="nav-label">Scanner</span>
+          </button>
+          <button id="btn-tab-panic" class="nav-item" role="tab" aria-selected="false" aria-controls="panel-panic" tabindex="-1" data-tab="panic">
+            <span class="nav-icon" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2L2 14h12L8 2z"/><path d="M8 6v4"/><circle cx="8" cy="12" r=".5" fill="currentColor"/></svg>
+            </span>
+            <span class="nav-label">Panic</span>
+          </button>
+          <button id="btn-tab-history" class="nav-item" role="tab" aria-selected="false" aria-controls="panel-history" tabindex="-1" data-tab="history">
+            <span class="nav-icon" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 4v4l3 2"/></svg>
+            </span>
+            <span class="nav-label">Scan logs</span>
+          </button>
+        </nav>
 
-      <!-- TAB: Dashboard -->
-      <section class="tab-content active" id="tab-dashboard">
-        <!-- Stats Grid -->
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-header">
-              <span class="stat-label">Total Files</span>
-              <span class="stat-icon">📁</span>
-            </div>
-            <div class="stat-value" id="stat-total-files">—</div>
-            <div class="stat-footer">
-              <span class="stat-trend neutral">All files indexed</span>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-header">
-              <span class="stat-label">Total Dependencies</span>
-              <span class="stat-icon">📦</span>
-            </div>
-            <div class="stat-value" id="stat-total-deps">—</div>
-            <div class="stat-footer">
-              <span class="stat-trend neutral" id="stat-dev-deps-count">— devDependencies</span>
-            </div>
-          </div>
-          <div class="stat-card warning">
-            <div class="stat-header">
-              <span class="stat-label">Unused Files</span>
-              <span class="stat-icon">🗑️</span>
-            </div>
-            <div class="stat-value" id="stat-unused-files">—</div>
-            <div class="stat-footer">
-              <span class="stat-trend negative" id="stat-unused-files-label">Flagged by Knip</span>
-            </div>
-          </div>
-          <div class="stat-card danger">
-            <div class="stat-header">
-              <span class="stat-label">Dead Dependencies</span>
-              <span class="stat-icon">🔌</span>
-            </div>
-            <div class="stat-value" id="stat-unused-deps">—</div>
-            <div class="stat-footer">
-              <span class="stat-trend negative" id="stat-unused-deps-label">Unused packages</span>
-            </div>
+        <div class="sidebar-footer" aria-live="polite" aria-atomic="true">
+          <div class="status-pill" id="github-status" data-state="unknown">
+            <span class="dot" aria-hidden="true"></span>
+            <span class="text">Checking GitHub…</span>
           </div>
         </div>
+      </aside>
 
-        <!-- Dashboard Charts & Info -->
-        <div class="dashboard-panels">
-          <div class="panel glass-panel code-health-panel">
-            <h3>Codebase Health Index</h3>
-            <div class="health-circle-container">
-              <div class="health-ring">
-                <svg viewBox="0 0 100 100">
-                  <defs>
-                    <linearGradient id="ring-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" style="stop-color:#00e5ff"/>
-                      <stop offset="100%" style="stop-color:#7c5cff"/>
-                    </linearGradient>
-                  </defs>
-                  <circle cx="50" cy="50" r="40" class="ring-bg"></circle>
-                  <circle cx="50" cy="50" r="40" class="ring-val" id="health-ring-val" stroke-dasharray="251.2" stroke-dashoffset="251.2"></circle>
+      <!-- Main: tab panels -->
+      <main id="main" class="main" tabindex="-1">
+        <header class="topbar">
+          <h1 class="topbar-title" id="view-title">Dashboard</h1>
+          <p class="topbar-subtitle" id="view-subtitle">Repository health snapshot.</p>
+          <div class="topbar-actions">
+            <button id="btn-refresh" class="btn btn-ghost" type="button" aria-label="Refresh dashboard data">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 8a5 5 0 1 1-1.5-3.5"/><path d="M13 2v3h-3"/></svg>
+              <span>Refresh</span>
+            </button>
+          </div>
+        </header>
+
+        <section id="panel-dashboard" role="tabpanel" aria-labelledby="btn-tab-dashboard" class="panel panel-active" tabindex="0">
+          <div class="panel-body">
+            <!-- Health ring + headline -->
+            <div class="card card-hero">
+              <div class="health-ring" id="health-ring" role="img" aria-label="Health score">
+                <svg viewBox="0 0 120 120" width="120" height="120" aria-hidden="true">
+                  <circle class="ring-track" cx="60" cy="60" r="52" fill="none" stroke-width="8" />
+                  <circle class="ring-progress" cx="60" cy="60" r="52" fill="none" stroke-width="8" stroke-linecap="round"
+                          stroke-dasharray="326.7" stroke-dashoffset="326.7" transform="rotate(-90 60 60)" />
                 </svg>
-                <div class="health-val" id="health-score">—%</div>
-              </div>
-            </div>
-            <div class="health-metrics">
-              <div class="metric">
-                <span>Active Code</span>
-                <span class="metric-val" id="metric-active-code">—</span>
-              </div>
-              <div class="metric">
-                <span>Dark Matter (Dead Code)</span>
-                <span class="metric-val text-danger" id="metric-dark-matter">—</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="panel glass-panel repository-info-panel">
-            <h3>Talos Config details</h3>
-            <div class="details-list">
-              <div class="detail-item">
-                <span class="detail-label">Project Name</span>
-                <span class="detail-val" id="info-project-name">—</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Repository Host</span>
-                <span class="detail-val">GitHub (VIVAAN-DHAWAN)</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">TypeScript Version</span>
-                <span class="detail-val" id="info-ts-ver">—</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Express Engine</span>
-                <span class="detail-val">Active (v4.19.2)</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- TAB: Scanner -->
-      <section class="tab-content" id="tab-scanner">
-        <div class="scanner-controls panel glass-panel">
-          <div class="controls-info">
-            <h3>Dark Matter Code & Dependency Audit</h3>
-            <p>Scan your workspace in real-time to identify dead code, unused exports, and unreferenced packages. You can choose to run a dry-run audit or trigger automated safe removals.</p>
-          </div>
-          <div class="controls-buttons">
-            <button class="btn btn-primary" id="btn-run-audit">🔍 Analyze Codebase</button>
-            <button class="btn btn-danger" id="btn-run-cleanup">🧹 Safe Clean & PR</button>
-          </div>
-        </div>
-
-        <!-- Loading Overlay -->
-        <div class="loading-panel hidden" id="scanner-loading">
-          <div class="spinner"></div>
-          <h4 id="loading-title">Scanning codebase...</h4>
-          <p id="loading-desc">Running Knip and Depcheck analysis in the background.</p>
-        </div>
-
-        <!-- Scan Results -->
-        <div class="scan-results-container hidden" id="scan-results">
-          <!-- Unused Files -->
-          <div class="panel glass-panel result-panel">
-            <div class="result-header">
-              <h4>Unused Files <span class="badge badge-warning" id="count-unused-files">0</span></h4>
-              <p>Files that are never imported anywhere. Safe to delete.</p>
-            </div>
-            <div class="result-list" id="list-unused-files">
-              <!-- Dynamically populated -->
-            </div>
-          </div>
-
-          <!-- Unused Dependencies -->
-          <div class="panel glass-panel result-panel">
-            <div class="result-header">
-              <h4>Dead Dependencies <span class="badge badge-danger" id="count-unused-deps">0</span></h4>
-              <p>Packages declared in package.json but never imported in source files.</p>
-            </div>
-            <div class="result-list" id="list-unused-deps">
-              <!-- Dynamically populated -->
-            </div>
-          </div>
-
-          <!-- Unused Exports -->
-          <div class="panel glass-panel result-panel">
-            <div class="result-header">
-              <h4>Unused Exports <span class="badge badge-info" id="count-unused-exports">0</span></h4>
-              <p>Functions, classes, or constants exported from modules but never imported elsewhere.</p>
-            </div>
-            <div class="result-list" id="list-unused-exports">
-              <!-- Dynamically populated -->
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- TAB: Panic Button -->
-      <section class="tab-content" id="tab-panic">
-        <div class="panic-container">
-          <div class="panel glass-panel panic-details">
-            <h3>🚨 Immediate Production Recovery</h3>
-            <p>The Panic Button reverts a specific commit (or the latest HEAD commit) and pushes a recovery branch directly to your repository, opening a pull request to restore production health.</p>
-            
-            <div class="form-group">
-              <label for="panic-sha">Commit SHA to Revert</label>
-              <input type="text" id="panic-sha" placeholder="Defaults to HEAD (leave blank)" class="form-control">
-              <small class="form-text">Specify the bad commit SHA causing the incident. If blank, the latest commit on main will be reverted.</small>
-            </div>
-
-            <div class="form-group">
-              <label for="panic-reason">Reason for Revert</label>
-              <textarea id="panic-reason" placeholder="e.g. Sentry error spike / Production crash / Unhandled exception in login flow" class="form-control" rows="3"></textarea>
-            </div>
-
-            <div class="panic-trigger-zone">
-              <div class="panic-guard-check">
-                <input type="checkbox" id="panic-confirm">
-                <label for="panic-confirm">I confirm that I want to trigger an automated panic revert on GitHub.</label>
-              </div>
-              <button class="btn-panic" id="btn-trigger-panic" disabled>
-                <div class="btn-panic-glow"></div>
-                <div class="btn-panic-content">
-                  <span class="panic-icon">🚨</span>
-                  <span>TRIGGER PANIC REVERT</span>
+                <div class="health-ring-label">
+                  <span class="value" id="health-score">—</span>
+                  <span class="unit">/ 100</span>
                 </div>
-              </button>
+              </div>
+              <div class="hero-meta">
+                <p class="hero-headline" id="hero-headline">Loading repository health…</p>
+                <p class="hero-subline" id="hero-subline">Repo, branch, and head SHA will appear here.</p>
+              </div>
+            </div>
+
+            <!-- Stat grid -->
+            <div class="stat-grid">
+              <article class="stat-card">
+                <h3 class="stat-label">Source files</h3>
+                <p class="stat-value" id="stat-source-files">—</p>
+                <p class="stat-foot">ts · tsx · js · jsx in src/</p>
+              </article>
+              <article class="stat-card">
+                <h3 class="stat-label">Unused files</h3>
+                <p class="stat-value" id="stat-unused-files">—</p>
+                <p class="stat-foot">reported by Knip</p>
+              </article>
+              <article class="stat-card">
+                <h3 class="stat-label">Unused deps</h3>
+                <p class="stat-value" id="stat-unused-deps">—</p>
+                <p class="stat-foot">reported by Depcheck</p>
+              </article>
+              <article class="stat-card">
+                <h3 class="stat-label">Unused exports</h3>
+                <p class="stat-value" id="stat-unused-exports">—</p>
+                <p class="stat-foot">across all source files</p>
+              </article>
+            </div>
+
+            <!-- Detail lists -->
+            <div class="grid-2">
+              <article class="card">
+                <header class="card-header">
+                  <h2 class="card-title">Unused files</h2>
+                  <span class="card-count" id="count-unused-files" aria-live="polite">0</span>
+                </header>
+                <ul class="list" id="list-unused-files" aria-live="polite"></ul>
+              </article>
+              <article class="card">
+                <header class="card-header">
+                  <h2 class="card-title">Unused dependencies</h2>
+                  <span class="card-count" id="count-unused-deps" aria-live="polite">0</span>
+                </header>
+                <ul class="list" id="list-unused-deps" aria-live="polite"></ul>
+              </article>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <!-- TAB: Scan Logs -->
-      <section class="tab-content" id="tab-history">
-        <div class="panel glass-panel">
-          <h3>Audit Log History</h3>
-          <p>A history of all automated audits, cleanups, and panic button reverts executed by the Talos Engine.</p>
-          
-          <div class="table-container">
-            <table class="logs-table">
-              <thead>
-                <tr>
-                  <th>Timestamp</th>
-                  <th>Action</th>
-                  <th>Status</th>
-                  <th>Details</th>
-                  <th>Branch/PR</th>
-                </tr>
-              </thead>
-              <tbody id="history-log-rows">
-                <tr>
-                  <td colspan="5" class="empty-table">No logs recorded yet. Run a scan or cleanup to populate.</td>
-                </tr>
-              </tbody>
-            </table>
+        <section id="panel-scanner" role="tabpanel" aria-labelledby="btn-tab-scanner" class="panel" tabindex="0" hidden>
+          <div class="panel-body">
+            <article class="card">
+              <header class="card-header">
+                <h2 class="card-title">Dark-matter scan</h2>
+              </header>
+              <p class="prose">
+                Runs Knip and Depcheck against the repository. Audit-only by default —
+                cleanup and PR creation are explicit opt-in below.
+              </p>
+              <div class="action-row">
+                <button id="btn-quick-scan" class="btn btn-primary" type="button">
+                  Run audit
+                </button>
+                <button id="btn-run-audit" class="btn btn-secondary" type="button">
+                  Audit + cleanup (no PR)
+                </button>
+                <button id="btn-run-cleanup" class="btn btn-danger-ghost" type="button"
+                        aria-describedby="cleanup-help">
+                  Audit + cleanup + PR
+                </button>
+              </div>
+              <p class="help" id="cleanup-help">
+                Cleanup deletes files Knip reports as unused and uninstalls deps Depcheck
+                reports as unused. The PR is opened against a deterministic
+                <code>chore/dark-matter-&lt;stamp&gt;</code> branch.
+              </p>
+            </article>
+
+            <article class="card">
+              <header class="card-header">
+                <h2 class="card-title">Last scan result</h2>
+                <span class="card-count" id="scan-status-pill" data-state="idle">idle</span>
+              </header>
+              <div id="scan-results" class="scan-results" aria-live="polite">
+                <p class="empty-state">No scan run yet in this session.</p>
+              </div>
+            </article>
           </div>
-        </div>
-      </section>
-    </main>
-  </div>
+        </section>
 
-  <!-- Panic Loading/Success Modal -->
-  <div class="modal-backdrop hidden" id="panic-modal">
-    <div class="modal glass-panel">
-      <div id="modal-loading-state">
-        <div class="spinner spinner-large"></div>
-        <h3>Executing Panic Revert...</h3>
-        <p>Creating recovery branch, reverting commit, and opening pull request.</p>
-      </div>
-      <div id="modal-success-state" class="hidden">
-        <div class="success-icon">✓</div>
-        <h3>Revert PR Opened Successfully!</h3>
-        <p id="success-message">A recovery pull request has been opened on your repository.</p>
-        <div class="modal-pr-details" id="modal-pr-link-container">
-          <!-- Link to PR -->
+        <section id="panel-panic" role="tabpanel" aria-labelledby="btn-tab-panic" class="panel" tabindex="0" hidden>
+          <div class="panel-body">
+            <article class="card card-warning">
+              <header class="card-header">
+                <h2 class="card-title">Panic recovery</h2>
+                <span class="badge badge-warning">destructive</span>
+              </header>
+              <p class="prose">
+                Reverts a commit on a fresh <code>panic/revert-&lt;sha&gt;</code> branch and opens
+                a recovery PR. Merge commits are rejected. The reason is recorded in the
+                audit log and on the PR body.
+              </p>
+              <form id="panic-form" class="form" novalidate>
+                <div class="form-row">
+                  <label for="panic-sha">Commit SHA <span class="optional">(optional — defaults to HEAD)</span></label>
+                  <input id="panic-sha" name="sha" type="text" autocomplete="off" spellcheck="false"
+                         inputmode="text" placeholder="40-char hex SHA or abbreviated"
+                         aria-describedby="panic-sha-help" />
+                  <p class="help" id="panic-sha-help">7–40 hex characters. Leave blank to revert HEAD.</p>
+                </div>
+                <div class="form-row">
+                  <label for="panic-reason">Reason <span class="required" aria-hidden="true">*</span></label>
+                  <textarea id="panic-reason" name="reason" rows="3" required
+                            placeholder="Why is this revert necessary? This will appear on the recovery PR."
+                            aria-describedby="panic-reason-help"></textarea>
+                  <p class="help" id="panic-reason-help">Minimum 3 characters. Max 1000.</p>
+                </div>
+                <div class="form-row form-row-checkbox">
+                  <input id="panic-confirm" name="confirm" type="checkbox" required />
+                  <label for="panic-confirm">I understand this opens a PR that reverts the specified commit.</label>
+                </div>
+                <div class="action-row">
+                  <button id="btn-trigger-panic" class="btn btn-danger" type="submit" disabled>
+                    Trigger panic revert
+                  </button>
+                </div>
+              </form>
+            </article>
+          </div>
+        </section>
+
+        <section id="panel-history" role="tabpanel" aria-labelledby="btn-tab-history" class="panel" tabindex="0" hidden>
+          <div class="panel-body">
+            <article class="card">
+              <header class="card-header">
+                <h2 class="card-title">Audit history</h2>
+                <span class="card-count" id="history-count" aria-live="polite">0</span>
+              </header>
+              <div class="table-wrap">
+                <table class="history-table" id="history-table">
+                  <caption class="sr-only">Recent audit log entries, newest first.</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Time</th>
+                      <th scope="col">Kind</th>
+                      <th scope="col">Status</th>
+                      <th scope="col">Message</th>
+                      <th scope="col">Ref</th>
+                    </tr>
+                  </thead>
+                  <tbody id="history-log-rows" aria-live="polite"></tbody>
+                </table>
+              </div>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Toast region -->
+    <div id="toast-region" class="toast-region" role="status" aria-live="polite" aria-atomic="true"></div>
+
+    <!-- Panic confirm modal (redundant safety layer above the form checkbox) -->
+    <div id="panic-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="panic-modal-title" aria-describedby="panic-modal-body" hidden>
+      <div class="modal-backdrop" data-modal-close></div>
+      <div class="modal-dialog" role="document">
+        <header class="modal-header">
+          <h2 id="panic-modal-title" class="modal-title">Confirm panic revert</h2>
+          <button class="modal-close" type="button" aria-label="Close dialog" data-modal-close>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3l10 10M13 3L3 13"/></svg>
+          </button>
+        </header>
+        <div id="panic-modal-body" class="modal-body">
+          <p class="prose" id="panic-modal-summary">You are about to revert a commit and open a recovery PR.</p>
+          <dl class="kv" id="panic-modal-details"></dl>
         </div>
-        <button class="btn btn-primary" id="btn-close-modal" style="margin-top: 20px;">Dismiss</button>
+        <footer class="modal-footer">
+          <button class="btn btn-ghost" type="button" data-modal-close>Cancel</button>
+          <button id="btn-modal-confirm-panic" class="btn btn-danger" type="button">Confirm and revert</button>
+        </footer>
       </div>
     </div>
-  </div>
 
-  <script src="app.js"></script>
-</body>
+    <script type="module" src="/js/main.js"></script>
+  </body>
 </html>

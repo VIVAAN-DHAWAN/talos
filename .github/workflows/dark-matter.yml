@@ -1,22 +1,51 @@
-name: Dark Matter Scanner
+name: dark-matter
 
 on:
   schedule:
-    - cron: '0 3 * * 1' # Runs at 03:00 on Monday
+    # 07:00 UTC every Monday.
+    - cron: '0 7 * * 1'
   workflow_dispatch:
 
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: dark-matter
+  cancel-in-progress: false
+
 jobs:
-  dark-matter:
+  scan-and-clean:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - name: Use Node.js 20
-        uses: actions/setup-node@v4
         with:
-          node-version: 20
-      - run: npm ci || npm install
-      - run: bash .github/scripts/dark-matter/run.sh
-      - name: Open PR
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+      - name: Run dark-matter scan + cleanup
+        run: bash .github/scripts/dark-matter/run.sh
+
+      - name: Open cleanup PR (if changes)
+        if: success()
         run: bash .github/scripts/dark-matter/open-pr.sh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dark-matter-output
+          path: .dark-matter/
+          if-no-files-found: ignore
+          retention-days: 14
