@@ -1,4 +1,15 @@
 document.addEventListener("DOMContentLoaded", () => {
+  // Utility for escaping HTML to prevent XSS
+  function escapeHtml(str) {
+    if (typeof str !== 'string') return '';
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
   // Tabs Navigation
   const navItems = document.querySelectorAll(".nav-item");
   const tabContents = document.querySelectorAll(".tab-content");
@@ -124,13 +135,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
           // Action
           const actionTd = document.createElement("td");
-          actionTd.innerHTML = `<strong>${log.action.toUpperCase()}</strong>`;
+          actionTd.innerHTML = `<strong>${escapeHtml(log.action.toUpperCase())}</strong>`;
           tr.appendChild(actionTd);
 
           // Status
           const statusTd = document.createElement("td");
           const statusClass = log.status === "success" ? "ok" : "text-danger";
-          statusTd.innerHTML = `<span class="${statusClass}">${log.status.toUpperCase()}</span>`;
+          statusTd.innerHTML = `<span class="${statusClass}">${escapeHtml(log.status.toUpperCase())}</span>`;
           tr.appendChild(statusTd);
 
           // Details
@@ -141,9 +152,9 @@ document.addEventListener("DOMContentLoaded", () => {
           // Branch / PR
           const prTd = document.createElement("td");
           if (log.prUrl) {
-            prTd.innerHTML = `<a href="${log.prUrl}" target="_blank" class="text-primary">View PR ↗</a>`;
+            prTd.innerHTML = `<a href="${encodeURI(log.prUrl)}" target="_blank" class="text-primary">View PR ↗</a>`;
           } else if (log.branch) {
-            prTd.innerHTML = `<span class="mono">${log.branch}</span>`;
+            prTd.innerHTML = `<span class="mono">${escapeHtml(log.branch)}</span>`;
           } else {
             prTd.textContent = "—";
           }
@@ -216,7 +227,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (data.unusedFiles.length > 0) {
           listFiles.innerHTML = data.unusedFiles.map(f => `
             <div class="result-item">
-              <span>${f}</span>
+              <span>${escapeHtml(f)}</span>
               <span class="result-meta text-danger">${cleanup ? "Deleted" : "Unused File"}</span>
             </div>
           `).join("");
@@ -228,7 +239,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (data.unusedDeps.length > 0) {
           listDeps.innerHTML = data.unusedDeps.map(d => `
             <div class="result-item">
-              <span>${d}</span>
+              <span>${escapeHtml(d)}</span>
               <span class="result-meta text-danger">${cleanup ? "Uninstalled" : "Unused Package"}</span>
             </div>
           `).join("");
@@ -240,7 +251,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (data.unusedExports.length > 0) {
           listExports.innerHTML = data.unusedExports.map(e => `
             <div class="result-item">
-              <span>${e.file}: <strong>${e.name}</strong></span>
+              <span>${escapeHtml(e.file)}: <strong>${escapeHtml(e.name)}</strong></span>
               <span class="result-meta text-warning">Manual Review Needed</span>
             </div>
           `).join("");
@@ -298,9 +309,9 @@ document.addEventListener("DOMContentLoaded", () => {
           successMessage.textContent = `Successfully reverted commit ${data.revertSha.substring(0, 7)}: "${data.originalSubject}"`;
           
           if (data.prUrl) {
-            prLinkContainer.innerHTML = `<a href="${data.prUrl}" target="_blank">View Recovery PR on GitHub ↗</a><br/><small class="text-muted">Branch: ${data.branch}</small>`;
+            prLinkContainer.innerHTML = `<a href="${encodeURI(data.prUrl)}" target="_blank">View Recovery PR on GitHub ↗</a><br/><small class="text-muted">Branch: ${escapeHtml(data.branch)}</small>`;
           } else {
-            prLinkContainer.innerHTML = `Recovery branch created: <span class="mono">${data.branch}</span>`;
+            prLinkContainer.innerHTML = `Recovery branch created: <span class="mono">${escapeHtml(data.branch)}</span>`;
           }
         } else {
           // Error handling

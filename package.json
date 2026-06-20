@@ -1,9 +1,22 @@
 {
-  "name": "aegis-project",
+  "name": "talos",
   "version": "0.1.0",
   "private": true,
-  "description": "Aegis-project starter app",
+  "description": "Talos — Dark Matter Engine for automated dead code detection, dependency cleanup, and production panic recovery",
   "main": "dist/server.js",
+  "author": "VIVAAN-DHAWAN",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VIVAAN-DHAWAN/talos.git"
+  },
+  "bugs": {
+    "url": "https://github.com/VIVAAN-DHAWAN/talos/issues"
+  },
+  "homepage": "https://github.com/VIVAAN-DHAWAN/talos#readme",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
@@ -23,9 +36,29 @@
     "@playwright/test": "^1.45.0",
     "@types/express": "^4.17.21",
     "@types/node": "^20.11.30",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
     "depcheck": "^1.4.7",
+    "eslint": "^8.57.0",
     "knip": "^5.27.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5"
-  }
+  },
+  "keywords": [
+    "dead-code-detection",
+    "unused-dependencies",
+    "code-cleanup",
+    "dark-matter",
+    "codebase-health",
+    "knip",
+    "depcheck",
+    "typescript",
+    "express",
+    "automation",
+    "developer-tools",
+    "panic-button",
+    "production-recovery",
+    "github-actions",
+    "code-quality"
+  ]
 }

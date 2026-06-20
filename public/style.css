@@ -893,3 +893,11 @@ body {
 .modal-pr-details a:hover {
   text-decoration: underline;
 }
+
+/* Utility Classes */
+.text-primary { color: var(--primary); }
+.text-warning { color: var(--warning); }
+.text-danger { color: var(--danger); }
+.text-muted { color: var(--text-muted); }
+.ok { color: var(--success); }
+.mono { font-family: var(--font-mono); }

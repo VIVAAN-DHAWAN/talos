@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { greet } from './utils/greet';
 import path from 'path';
 import fs from 'fs';
@@ -14,22 +14,49 @@ const port = process.env.PORT ? Number(process.env.PORT) : 3000;
 
 const HISTORY_FILE = path.join(__dirname, '../.dark-matter/history.json');
 
+interface HistoryRecord {
+  timestamp: string;
+  action: string;
+  status: 'success' | 'failed';
+  details: string;
+  prUrl?: string;
+  branch?: string;
+}
+
+interface KnipIssue {
+  file: string;
+  exports?: Array<{ name: string }>;
+}
+
+interface KnipReport {
+  files?: string[];
+  issues?: KnipIssue[];
+}
+
+interface DepcheckReport {
+  dependencies?: string[];
+}
+
 // Ensure history file exists
-function ensureHistoryFile() {
+async function ensureHistoryFile(): Promise<void> {
   const dir = path.dirname(HISTORY_FILE);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+  try {
+    await fs.promises.access(dir);
+  } catch {
+    await fs.promises.mkdir(dir, { recursive: true });
   }
-  if (!fs.existsSync(HISTORY_FILE)) {
-    fs.writeFileSync(HISTORY_FILE, JSON.stringify([]));
+  try {
+    await fs.promises.access(HISTORY_FILE);
+  } catch {
+    await fs.promises.writeFile(HISTORY_FILE, JSON.stringify([]));
   }
 }
 
 // Read history logs
-function readHistory(): any[] {
-  ensureHistoryFile();
+async function readHistory(): Promise<HistoryRecord[]> {
+  await ensureHistoryFile();
   try {
-    const data = fs.readFileSync(HISTORY_FILE, 'utf-8');
+    const data = await fs.promises.readFile(HISTORY_FILE, 'utf-8');
     return JSON.parse(data);
   } catch {
     return [];
@@ -37,33 +64,51 @@ function readHistory(): any[] {
 }
 
 // Append history log
-function writeHistory(record: any) {
-  ensureHistoryFile();
+async function writeHistory(record: HistoryRecord): Promise<void> {
+  await ensureHistoryFile();
   try {
-    const history = readHistory();
+    const history = await readHistory();
     history.unshift(record); // Prepend so latest is first
-    fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
+    await fs.promises.writeFile(HISTORY_FILE, JSON.stringify(history, null, 2));
   } catch (err) {
     console.error('Failed to write history log', err);
   }
 }
 
 // Helper to count files in a directory recursively
-function countFiles(dir: string, extension = '.ts'): number {
+async function countFiles(dir: string, extensions = ['.ts', '.tsx', '.js', '.jsx']): Promise<number> {
   let count = 0;
-  if (!fs.existsSync(dir)) return 0;
+  try {
+    await fs.promises.access(dir);
+  } catch {
+    return 0;
+  }
   
-  const files = fs.readdirSync(dir);
+  const files = await fs.promises.readdir(dir);
   for (const file of files) {
     const fullPath = path.join(dir, file);
-    const stat = fs.statSync(fullPath);
+    const stat = await fs.promises.stat(fullPath);
     if (stat.isDirectory()) {
-      count += countFiles(fullPath, extension);
-    } else if (file.endsWith(extension)) {
+      count += await countFiles(fullPath, extensions);
+    } else if (extensions.some(ext => file.endsWith(ext))) {
       count++;
     }
   }
   return count;
+}
+
+// Parse Knip issues for unused exports
+function parseKnipUnusedExports(knipRes: KnipReport): Array<{ file: string; name: string }> {
+  const unusedExports: Array<{ file: string; name: string }> = [];
+  const issues = knipRes.issues || [];
+  for (const issue of issues) {
+    const file = issue.file;
+    const exports = issue.exports || [];
+    for (const exp of exports) {
+      unusedExports.push({ file, name: exp.name });
+    }
+  }
+  return unusedExports;
 }
 
 // Root route handler that supports both the web dashboard and JSON API clients
@@ -85,19 +130,20 @@ app.get('/health', (_req: Request, res: Response) => {
 });
 
 // GET status endpoint
-app.get('/api/status', async (_req: Request, res: Response) => {
+app.get('/api/status', async (_req: Request, res: Response, next: NextFunction) => {
   try {
     // Read package.json
     const packageJsonPath = path.join(__dirname, '../package.json');
-    const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+    const pkgData = await fs.promises.readFile(packageJsonPath, 'utf-8');
+    const pkg = JSON.parse(pkgData);
     const totalDeps = Object.keys(pkg.dependencies || {}).length;
     const totalDevDeps = Object.keys(pkg.devDependencies || {}).length;
 
     // Count source files
-    const totalFiles = countFiles(path.join(__dirname, '../src'));
+    const totalFiles = await countFiles(path.join(__dirname, '../src'));
 
     // Run knip --reporter json
-    let knipRes: any = { files: [], issues: [] };
+    let knipRes: KnipReport = { files: [], issues: [] };
     try {
       const { stdout } = await execPromise('npx knip --reporter json', { cwd: path.join(__dirname, '..') });
       knipRes = JSON.parse(stdout);
@@ -110,7 +156,7 @@ app.get('/api/status', async (_req: Request, res: Response) => {
     }
 
     // Run depcheck --json
-    let depcheckRes: any = { dependencies: [] };
+    let depcheckRes: DepcheckReport = { dependencies: [] };
     try {
       const { stdout } = await execPromise('npx depcheck --json', { cwd: path.join(__dirname, '..') });
       depcheckRes = JSON.parse(stdout);
@@ -122,16 +168,7 @@ app.get('/api/status', async (_req: Request, res: Response) => {
       }
     }
 
-    // Parse Knip issues for unused exports
-    const unusedExports: any[] = [];
-    const issues = knipRes.issues || [];
-    for (const issue of issues) {
-      const file = issue.file;
-      const exports = issue.exports || [];
-      for (const exp of exports) {
-        unusedExports.push({ file, name: exp.name });
-      }
-    }
+    const unusedExports = parseKnipUnusedExports(knipRes);
 
     res.json({
       ok: true,
@@ -149,16 +186,16 @@ app.get('/api/status', async (_req: Request, res: Response) => {
       }
     });
   } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
+    next(err);
   }
 });
 
 // POST scan endpoint (run audit / cleanup)
-app.post('/api/scan', async (req: Request, res: Response) => {
+app.post('/api/scan', async (req: Request, res: Response, next: NextFunction) => {
   const { cleanup } = req.body;
   try {
     // Run dark-matter run.sh
-    const { stdout: runStdout } = await execPromise('bash .github/scripts/dark-matter/run.sh', {
+    await execPromise('bash .github/scripts/dark-matter/run.sh', {
       cwd: path.join(__dirname, '..')
     });
 
@@ -193,30 +230,25 @@ app.post('/api/scan', async (req: Request, res: Response) => {
 
     // Parse Knip/Depcheck reports to return what was cleaned
     const darkMatterDir = path.join(__dirname, '../.dark-matter');
-    let knipRes: any = {};
-    let depcheckRes: any = {};
+    let knipRes: KnipReport = {};
+    let depcheckRes: DepcheckReport = {};
     
-    if (fs.existsSync(path.join(darkMatterDir, 'knip.json'))) {
-      knipRes = JSON.parse(fs.readFileSync(path.join(darkMatterDir, 'knip.json'), 'utf-8'));
-    }
-    if (fs.existsSync(path.join(darkMatterDir, 'depcheck.json'))) {
-      depcheckRes = JSON.parse(fs.readFileSync(path.join(darkMatterDir, 'depcheck.json'), 'utf-8'));
-    }
+    try {
+      const knipData = await fs.promises.readFile(path.join(darkMatterDir, 'knip.json'), 'utf-8');
+      knipRes = JSON.parse(knipData);
+    } catch {}
+
+    try {
+      const depcheckData = await fs.promises.readFile(path.join(darkMatterDir, 'depcheck.json'), 'utf-8');
+      depcheckRes = JSON.parse(depcheckData);
+    } catch {}
 
     const unusedFiles = knipRes.files || [];
     const unusedDeps = depcheckRes.dependencies || [];
-    const unusedExports: any[] = [];
-    const issues = knipRes.issues || [];
-    for (const issue of issues) {
-      const file = issue.file;
-      const exports = issue.exports || [];
-      for (const exp of exports) {
-        unusedExports.push({ file, name: exp.name });
-      }
-    }
+    const unusedExports = parseKnipUnusedExports(knipRes);
 
     // Write history log
-    writeHistory({
+    await writeHistory({
       timestamp: new Date().toISOString(),
       action: cleanup ? 'cleanup' : 'audit',
       status: 'success',
@@ -236,19 +268,28 @@ app.post('/api/scan', async (req: Request, res: Response) => {
       branch
     });
   } catch (err: any) {
-    writeHistory({
+    await writeHistory({
       timestamp: new Date().toISOString(),
       action: cleanup ? 'cleanup' : 'audit',
       status: 'failed',
       details: err.message
     });
-    res.status(500).json({ ok: false, error: err.message });
+    next(err);
   }
 });
 
 // POST revert endpoint (Panic Button)
-app.post('/api/revert', async (req: Request, res: Response) => {
+app.post('/api/revert', async (req: Request, res: Response, next: NextFunction) => {
   const { sha, reason } = req.body;
+
+  if (sha && (typeof sha !== 'string' || !/^[0-9a-f]{4,40}$/i.test(sha))) {
+    return res.status(400).json({ ok: false, error: 'Invalid commit SHA format' });
+  }
+
+  if (reason && typeof reason !== 'string') {
+    return res.status(400).json({ ok: false, error: 'Reason must be a string' });
+  }
+
   try {
     let token = process.env.GITHUB_TOKEN || '';
     if (!token) {
@@ -265,6 +306,8 @@ app.post('/api/revert', async (req: Request, res: Response) => {
     if (!targetSha) {
       const { stdout: gitHead } = await execPromise('git rev-parse HEAD', { cwd: path.join(__dirname, '..') });
       targetSha = gitHead.trim();
+    } else if (!/^[0-9a-f]{4,40}$/i.test(targetSha)) {
+      return res.status(400).json({ ok: false, error: 'Invalid commit SHA format' });
     }
 
     const env = { 
@@ -292,7 +335,7 @@ app.post('/api/revert', async (req: Request, res: Response) => {
     const originalSubject = subjectStdout.trim();
 
     // Write history log
-    writeHistory({
+    await writeHistory({
       timestamp: new Date().toISOString(),
       action: 'panic revert',
       status: 'success',
@@ -309,32 +352,41 @@ app.post('/api/revert', async (req: Request, res: Response) => {
       branch
     });
   } catch (err: any) {
-    writeHistory({
+    await writeHistory({
       timestamp: new Date().toISOString(),
       action: 'panic revert',
       status: 'failed',
       details: err.message
     });
-    res.status(500).json({ ok: false, error: err.message });
+    next(err);
   }
 });
 
 // GET history logs
-app.get('/api/history', (_req: Request, res: Response) => {
+app.get('/api/history', async (_req: Request, res: Response, next: NextFunction) => {
   try {
-    const history = readHistory();
+    const history = await readHistory();
     res.json({ ok: true, history });
   } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
+    next(err);
   }
 });
 
+// 404 handler
+app.use((_req: Request, res: Response) => {
+  res.status(404).json({ error: 'Not found' });
+});
 
+// Error handling middleware
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  console.error(err);
+  res.status(500).json({ error: 'Internal server error' });
+});
 
 if (require.main === module) {
   app.listen(port, () => {
     // eslint-disable-next-line no-console
-    console.log(`Aegis listening on :${port}`);
+    console.log(`Talos listening on :${port}`);
   });
 }
 

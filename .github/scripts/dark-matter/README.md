@@ -1,34 +1,25 @@
-# Dark Matter cleaner
+# Dark Matter Cleaner
 
-A scheduled GitLab CI job that scans the repo for unused code and dependencies,
-applies safe removals, and opens an MR for human review.
+A scheduled GitHub Actions workflow that scans the repo for unused code and dependencies,
+applies safe removals, and opens a PR for human review.
 
 ## How it works
 
-1. `.gitlab-ci.yml` defines a `dark-matter` job that runs only when:
-   - `CI_PIPELINE_SOURCE == "schedule"`, **and**
-   - the schedule sets the variable `DARK_MATTER=1`.
+1. `.github/workflows/dark-matter.yml` defines a workflow that runs:
+   - On a weekly schedule (cron), or
+   - When manually dispatched (`workflow_dispatch`).
 2. `run.sh` detects the stack and runs the matching tools.
    Today: Node/TypeScript via [`knip`](https://knip.dev) and
    [`depcheck`](https://github.com/depcheck/depcheck).
-3. `open-mr.sh` commits the changes to a fresh `chore/dark-matter-<timestamp>`
-   branch and opens an MR against `main` via the GitLab REST API.
+3. `open-pr.sh` commits the changes to a fresh `chore/dark-matter-<timestamp>`
+   branch and opens a PR against `main` using the GitHub CLI (`gh`).
 
 ## One-time setup
 
-1. **Create a project access token**
-   - Settings > Access tokens
-   - Role: `Developer` (or higher)
-   - Scopes: `api`, `write_repository`
-2. **Add it as a CI/CD variable**
-   - Settings > CI/CD > Variables
-   - Key: `DARK_MATTER_TOKEN`
-   - Type: Variable, **Masked**, **Protected** off (so it works on the bot branch)
-3. **Create the schedule**
-   - Build > Pipeline schedules > New schedule
-   - Cron: `0 3 * * 1` (Mondays 03:00 UTC) or your preference
-   - Target branch: `main`
-   - Variable: `DARK_MATTER` = `1`
+1. **Provide a GitHub Token**:
+   - The workflow uses the built-in `GITHUB_TOKEN` to push branches and open PRs.
+   - Ensure the repository settings allow GitHub Actions to create and approve pull requests (Settings > Actions > General > Workflow permissions > check "Read and write permissions" and "Allow GitHub Actions to create and approve pull requests").
+   - Alternatively, you can configure a Personal Access Token (PAT) with `repo` scopes and add it as a repository secret named `GITHUB_TOKEN`.
 
 ## Extending to more stacks
 
@@ -47,5 +38,4 @@ Keep removals conservative — the human reviewer is the final gate.
 
 ## Status
 
-Infrastructure is in place. The first scheduled run will only happen after the
-one-time setup (token + schedule) above is completed.
+Infrastructure is in place. The weekly scheduled run is configured to run automatically.

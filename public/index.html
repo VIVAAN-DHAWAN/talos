@@ -3,7 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Talos • Dark Matter Dashboard</title>
+  <title>Talos — Dark Matter Engine</title>
+  <meta name="description" content="Talos Dark Matter Engine — automated dead code detection, unused dependency cleanup, and one-click production panic recovery dashboard">
+  <meta property="og:title" content="Talos — Dark Matter Engine">
+  <meta property="og:description" content="Automated dead code detection, unused dependency cleanup, and one-click production panic recovery dashboard">
+  <meta property="og:type" content="website">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -118,6 +122,12 @@
             <div class="health-circle-container">
               <div class="health-ring">
                 <svg viewBox="0 0 100 100">
+                  <defs>
+                    <linearGradient id="ring-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" style="stop-color:#00e5ff"/>
+                      <stop offset="100%" style="stop-color:#7c5cff"/>
+                    </linearGradient>
+                  </defs>
                   <circle cx="50" cy="50" r="40" class="ring-bg"></circle>
                   <circle cx="50" cy="50" r="40" class="ring-val" id="health-ring-val" stroke-dasharray="251.2" stroke-dashoffset="251.2"></circle>
                 </svg>
